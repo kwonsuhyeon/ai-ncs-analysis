@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>커리큘럼 그래프 초안 — 체크포인트 C</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Malgun Gothic', sans-serif; background: #1a1a2e; color: #eee; display: flex; height: 100vh; overflow: hidden; }
+
+#sidebar {
+  width: 320px; min-width: 320px;
+  background: #16213e;
+  display: flex; flex-direction: column;
+  border-right: 1px solid #0f3460;
+}
+
+#sidebar-header {
+  padding: 16px;
+  background: #0f3460;
+  border-bottom: 1px solid #1a1a2e;
+}
+#sidebar-header h2 { font-size: 14px; margin-bottom: 6px; color: #e94560; }
+#sidebar-header p  { font-size: 11px; color: #aaa; }
+
+#legend { padding: 12px 16px; border-bottom: 1px solid #0f3460; }
+#legend h3 { font-size: 11px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.legend-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 11px; }
+.legend-dot { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0; }
+.legend-edge { width: 24px; height: 3px; flex-shrink: 0; }
+
+#filters { padding: 12px 16px; border-bottom: 1px solid #0f3460; }
+#filters h3 { font-size: 11px; color: #888; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+.filter-btn {
+  display: inline-block; margin: 2px; padding: 4px 10px;
+  border: 1px solid #0f3460; border-radius: 12px;
+  font-size: 11px; cursor: pointer; color: #ccc; background: transparent;
+  transition: all 0.2s;
+}
+.filter-btn.active { background: #0f3460; color: #fff; border-color: #e94560; }
+.filter-btn:hover { border-color: #e94560; }
+
+#info-panel {
+  flex: 1; overflow-y: auto; padding: 16px;
+}
+#info-panel h3 { font-size: 13px; color: #e94560; margin-bottom: 12px; }
+#node-detail { font-size: 12px; }
+.detail-row { margin-bottom: 8px; }
+.detail-label { color: #888; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+.detail-value { color: #ddd; line-height: 1.5; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 10px; font-weight: bold; margin: 2px;
+}
+.badge-합의       { background: #1b5e20; color: #a5d6a7; }
+.badge-hr_field_override { background: #4a148c; color: #e1bee7; }
+.badge-field_override    { background: #e65100; color: #ffe0b2; }
+.badge-edu_override      { background: #0d47a1; color: #bbdefb; }
+.badge-covered           { background: #1b5e20; color: #a5d6a7; }
+.badge-job_market_gap    { background: #bf360c; color: #ffccbc; }
+.badge-leading_signal    { background: #4a148c; color: #e1bee7; }
+.badge-not_covered       { background: #424242; color: #bdbdbd; }
+
+#cy-wrap { flex: 1; position: relative; }
+#cy { width: 100%; height: 100%; }
+
+#toolbar {
+  position: absolute; top: 12px; right: 12px;
+  display: flex; flex-direction: column; gap: 6px; z-index: 10;
+}
+.tool-btn {
+  padding: 8px 14px; border-radius: 6px;
+  background: #16213e; border: 1px solid #0f3460;
+  color: #ccc; font-size: 12px; cursor: pointer;
+  transition: all 0.2s;
+}
+.tool-btn:hover { background: #0f3460; color: #fff; }
+
+#stats {
+  position: absolute; bottom: 12px; left: 12px;
+  background: rgba(22,33,62,0.9); border: 1px solid #0f3460;
+  border-radius: 8px; padding: 10px 14px; font-size: 11px; color: #aaa;
+  z-index: 10;
+}
+#stats span { color: #e94560; font-weight: bold; }
+
+.hint { font-size: 10px; color: #666; padding: 8px 16px; border-top: 1px solid #0f3460; text-align: center; }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <div id="sidebar-header">
+    <h2>커리큘럼 그래프 초안</h2>
+    <p>체크포인트 C — 노드를 클릭하면 근거 데이터 확인</p>
+  </div>
+
+  <div id="legend">
+    <h3>난이도 레벨</h3>
+    <div class="legend-row"><div class="legend-dot" style="background:#4CAF50"></div>L1 입문</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#2196F3"></div>L2 초급</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#FF9800"></div>L3 중급</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#E91E63"></div>L4 고급</div>
+    <h3 style="margin-top:10px">NCS 커버</h3>
+    <div class="legend-row"><div class="legend-dot" style="background:#555;border:2px solid #555"></div>NCS 등재</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#555;border:2px solid #FF5722"></div>job_market_gap</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#555;border:2px solid #9C27B0"></div>leading_signal</div>
+    <div class="legend-row"><div class="legend-dot" style="background:#555;border:2px solid #9E9E9E"></div>NCS 미등재</div>
+    <h3 style="margin-top:10px">엣지</h3>
+    <div class="legend-row"><div class="legend-edge" style="background:#aaa"></div>prerequisite (필수 선수)</div>
+    <div class="legend-row"><div class="legend-edge" style="background:#aaa;height:1px;border-top:2px dashed #666"></div>recommended (권장)</div>
+  </div>
+
+  <div id="filters">
+    <h3>레벨 필터</h3>
+    <button class="filter-btn active" onclick="filterLevel(0)">전체</button>
+    <button class="filter-btn" onclick="filterLevel(1)">L1 입문</button>
+    <button class="filter-btn" onclick="filterLevel(2)">L2 초급</button>
+    <button class="filter-btn" onclick="filterLevel(3)">L3 중급</button>
+    <button class="filter-btn" onclick="filterLevel(4)">L4 고급</button>
+  </div>
+
+  <div id="info-panel">
+    <h3>노드 상세</h3>
+    <div id="node-detail" style="color:#666;font-size:12px">노드를 클릭하면 데이터 근거를 확인할 수 있습니다.</div>
+  </div>
+  <div class="hint">노드 드래그 · 휠 확대/축소 · 배경 드래그로 이동</div>
+</div>
+
+<div id="cy-wrap">
+  <div id="cy"></div>
+  <div id="toolbar">
+    <button class="tool-btn" onclick="cy.fit()">전체 보기</button>
+    <button class="tool-btn" onclick="resetLayout()">레이아웃 재정렬</button>
+  </div>
+  <div id="stats">
+    노드 <span id="stat-nodes">-</span>개 &nbsp;|&nbsp; 엣지 <span id="stat-edges">-</span>개 &nbsp;|&nbsp; prerequisite <span id="stat-prereq">-</span>개
+  </div>
+</div>
+
+<script>
+const ELEMENTS = [{"data": {"id": "node-001", "label": "디지털·AI 리터러시", "level": 1, "difficulty": "입문", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 16, "work24_freq": "IT기술동향 15회(3위), ICBMA(스마트기술) 10회(7위)", "onet_im": "Judgment and Decision Making 3.59", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "전 직무 공통 입문. ncsClposInfo L3~L4 AI 서비스 기획자 진입점. NCS 인공지능서비스기획 K1·K2 직접 매핑", "color": "#4CAF50", "border": "#555", "importance": 0.72}}, {"data": {"id": "node-002", "label": "프로그래밍 입문 (Python·기초언어)", "level": 1, "difficulty": "입문", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "IDE 도구 활용 8회(9위)", "onet_im": "Programming 4.00 @ 15-1252.00 Software Developers", "pypi_monthly": "pydantic 887M/월, torch 80M/월 (대표 Python 패키지)", "github_stars": "-", "hf_papers": "-", "note": "NCS 프로그래밍 언어 활용 L2 + 응용 L3 직접 매핑. O*NET Programming IM 4.00 (최고값)", "color": "#4CAF50", "border": "#555", "importance": 0.88}}, {"data": {"id": "node-003", "label": "ML을 위한 최소 수학 (선형대수·확률·미분)", "level": 1, "difficulty": "입문", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 20, "work24_freq": "0 (싹용공고 직접 미반영)", "onet_im": "Mathematics 3.73 평균, 4.88 @ 15-2041.00 Statisticians", "pypi_monthly": "-", "github_stars": "Stanford CS229 cheatsheets 19k+", "hf_papers": "-", "note": "HR 삭제 주장 → Edu(NCS L5 선수)+Field(O*NET IM 3.73) 2:1 체택. 16~20h 압쳐 합의. NCS 인공지능 모델 학습(L5) K3·S1의 직접 전제", "color": "#4CAF50", "border": "#555", "importance": 0.69}}, {"data": {"id": "node-004", "label": "데이터베이스 개론 (SQL 기초)", "level": 1, "difficulty": "입문", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 24, "work24_freq": "SQL 작성 능력 6회(14위)", "onet_im": "Computers and Electronics 4.41 @ 15-1243.00", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS DB엔지니어링 SQL작성 L2 ~ 데이터베이스구현 L4 매핑. Work24 빈도 6회 직접 확인", "color": "#4CAF50", "border": "#555", "importance": 0.76}}, {"data": {"id": "node-005", "label": "정보보안·윤리 기초", "level": 1, "difficulty": "입문", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 16, "work24_freq": "ISMS-P 21회(Work24 1위), 개인정보보호법 33회(2위+4위 합산)", "onet_im": "Judgment and Decision Making 3.59", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "Work24 빈도 1·2위 역량. 2026 AI기본법 시행 + 데이터3법으로 전 IT 직무 필수. N19·N28 선수", "color": "#4CAF50", "border": "#555", "importance": 0.85}}, {"data": {"id": "node-006", "label": "데이터 수집·전처리 (학습데이터구축 포함)", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "데이터 분석 기술 11회(6위)", "onet_im": "Critical Thinking 3.91, Complex Problem Solving 3.65", "pypi_monthly": "great-expectations 29M/월 (데이터 품질)", "github_stars": "-", "hf_papers": "-", "note": "인공지능학습데이터구축(Work24 0건) Edu+Field 2:1로 N06 흥수 결정. NCS 빅데이터분석 L4 + 인공지능 데이터 전처리 L5 매핑", "color": "#2196F3", "border": "#555", "importance": 0.81}}, {"data": {"id": "node-007", "label": "데이터 시각화", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 24, "work24_freq": "데이터 분석 기술 11회 (수집과 공유 카테고리)", "onet_im": "Critical Thinking 3.91", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS 빅데이터분석 결과 시각화 L6 직접 매핑. N06 선수", "color": "#2196F3", "border": "#555", "importance": 0.68}}, {"data": {"id": "node-008", "label": "머신러닝 기초 (지도·비지도)", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "MLOps 관련 지식 4회(15위, 간접)", "onet_im": "Complex Problem Solving 3.65, Active Learning 3.54", "pypi_monthly": "scikit-learn (광범위 사용)", "github_stars": "-", "hf_papers": "-", "note": "NCS 인공지능 모델 학습 L5 직접 매핑. N03 선수", "color": "#2196F3", "border": "#555", "importance": 0.83}}, {"data": {"id": "node-009", "label": "응용 프로그래밍 (Java·웹·TypeScript)", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "HTTP 프로토콜·언어 작성 18회(8위 합산)", "onet_im": "Programming 4.00 @ 15-1252.00", "pypi_monthly": "-", "github_stars": "StackOverflow typescript 235k 태그(1위)", "hf_papers": "-", "note": "NCS 서버프로그램구현 L5 + 화면구현 L3 매핑. StackOverflow typescript 235k(누적 질문 1위)", "color": "#2196F3", "border": "#555", "importance": 0.82}}, {"data": {"id": "node-010", "label": "형상관리·협업 (Git/GitHub)", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 12, "work24_freq": "SW CI/CD 기술 1회 (간접)", "onet_im": "Active Learning 3.54", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS 형상관리(응용SW엔지니어링) 직접 매핑. N20 CI/CD 선수. 개발 생태계 기본 인프라", "color": "#2196F3", "border": "#555", "importance": 0.74}}, {"data": {"id": "node-011", "label": "클라우드 기초 (IaaS·컨테이너·Docker)", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "클라우드 관련 (간접)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "-", "github_stars": "kubernetes topic GitHub 19 repos, tech_signal 28", "hf_papers": "-", "note": "NCS 인프라스트럭쳐아키텍처구축 L5 매핑. ncs_covered Docker. StackOverflow kubernetes 58k 태그", "color": "#2196F3", "border": "#555", "importance": 0.79}}, {"data": {"id": "node-012", "label": "네트워크·시스템 기초", "level": 2, "difficulty": "초급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 24, "work24_freq": "네트워크 이해 6회(13위)", "onet_im": "Computers and Electronics 4.41", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS NW엔지니어링 L5 + 시스템SW엔지니어링 L5 매핑. N19 보안 선수", "color": "#2196F3", "border": "#555", "importance": 0.71}}, {"data": {"id": "node-013", "label": "딥러닝 (CNN·RNN·Transformer)", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 48, "work24_freq": "MLOps 관련 지식 4회 (간접)", "onet_im": "Complex Problem Solving 3.65, Active Learning 3.54", "pypi_monthly": "torch 80M/월", "github_stars": "Karpathy nanoGPT 57,254★, d2l-ai/d2l-en 28,721★", "hf_papers": "-", "note": "NCS 인공지능 모델 선정 L5 + 특징 추출 L5 매핑", "color": "#FF9800", "border": "#555", "importance": 0.85}}, {"data": {"id": "node-014", "label": "자연어 처리 (NLP)", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "데이터 분석 기술 11회 (텍스트 포함)", "onet_im": "Reading Comprehension 3.88", "pypi_monthly": "transformers 126M/월, sentence-transformers 23M/월", "github_stars": "HuggingFace NLP Course 3,878★", "hf_papers": "large language models 19회(1위), language models 4회", "note": "NCS 텍스트 데이터 분석 + 인공지능모델링 매핑. HF Daily Papers 1위 키워드와 직결", "color": "#FF9800", "border": "#555", "importance": 0.82}}, {"data": {"id": "node-015", "label": "컴퓨터 비전·이미지 처리", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "0 (직접 미반영)", "onet_im": "Complex Problem Solving 3.65", "pypi_monthly": "-", "github_stars": "Stanford CS231n 10k+", "hf_papers": "image generation 6회(4위), diffusion models 3회", "note": "NCS 인공지능 모델 선정 L5 (CV 특화). HF Daily Papers image generation 6회", "color": "#FF9800", "border": "#555", "importance": 0.74}}, {"data": {"id": "node-016", "label": "빅데이터 플랫폼·운영", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 48, "work24_freq": "데이터 분석 기술 11회 (플랫폼 포함)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "apache-airflow 19M/월 (일부)", "github_stars": "-", "hf_papers": "-", "note": "NCS 빅데이터플랫폼구축 L5~L7 매핑. N21 AI서비스기획 선수 (ncsFusInfo 120건)", "color": "#FF9800", "border": "#555", "importance": 0.76}}, {"data": {"id": "node-017", "label": "SW 아키텐처·설계", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "IEEE 830/1471 표준 7회(10위), IT기술동향 15회(3위)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS SW아키텐처 요소기술선정 L6 ~ 비전수립 L8 매핑", "color": "#FF9800", "border": "#555", "importance": 0.8}}, {"data": {"id": "node-018", "label": "IoT·디지털트윈 시스템", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "디지털트윈 0회 (싹용 미검출)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "ncsFusInfo: 디지털트윈구축-IoT시스템연동 22건, -AI모델링 20건. HR 삭제 주장 - Edu+Field 흥수 2:1 체택. 디지털트윈 독립 노드 폐기 후 N18에 흥수", "color": "#FF9800", "border": "#555", "importance": 0.59}}, {"data": {"id": "node-019", "label": "보안 엔지니어링", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "ISMS-P 21회, 개인정보보호법 33회, ISO/IEC 27001 12회", "onet_im": "Judgment and Decision Making 3.59", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS 보안엔지니어링 SW·DB·시스템·NW·관리적 보안구축 L5~L6 매핑", "color": "#FF9800", "border": "#555", "importance": 0.85}}, {"data": {"id": "node-020", "label": "DevOps·CI/CD", "level": 3, "difficulty": "중급", "ncs_coverage": "job_market_gap", "consensus": "합의", "duration_hours": 32, "work24_freq": "SW CI/CD 기술 1회 (job_market_gap - NCS 미커버)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "-", "github_stars": "github-actions 토픽 저장소 다수", "hf_papers": "-", "note": "NCS 미커버(job_market_gap). NCS 애플리케이션 배포 L3에 일부 흐적. Work24 A신호 1건", "color": "#FF9800", "border": "#FF5722", "importance": 0.8}}, {"data": {"id": "node-025a", "label": "LLM·생성형AI 기초 (프론프트·파인튜닝)", "level": 3, "difficulty": "중급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 32, "work24_freq": "LLM ncs_covered (Work24 직접 라벨 있음)", "onet_im": "Active Learning 3.54, Complex Problem Solving 3.65", "pypi_monthly": "openai 253M/월, anthropic 101M/월, transformers 126M/월", "github_stars": "Microsoft GenAI for Beginners 109,916★, Karpathy nanoGPT 57,254★", "hf_papers": "large language models 19회(1위), chain-of-thought 4회, mixture-of-experts 3회", "note": "NCS ncs_covered(LLM). HF Daily Papers 1위. N14 NLP 선수. 원래 N25 단일 노드에서 RAG 분리 결과", "color": "#FF9800", "border": "#555", "importance": 0.86}}, {"data": {"id": "node-025b", "label": "RAG 파이프라인 구축 (임베딩·벡터DB·검색증강)", "level": 3, "difficulty": "중급", "ncs_coverage": "not_covered", "consensus": "hr_field_override", "duration_hours": 32, "work24_freq": "1회 (NAS 라벨 오탐 포함 - 실질 미검출 가능)", "onet_im": "Critical Thinking 3.91, Programming 4.00", "pypi_monthly": "langchain 231M/월, sentence-transformers 23M/월, chromadb 13M/월 (합산 268M)", "github_stars": "langchain 135k★, 13 repos 감지", "hf_papers": "-", "note": "NCS 미등재. HR+Field 2:1 (가중치 합산 72%). Edu 통합 주장 소수의견. PyPI 268M/월 근거", "color": "#FF9800", "border": "#9E9E9E", "importance": 0.73}}, {"data": {"id": "node-021", "label": "AI 서비스 기획·전략", "level": 4, "difficulty": "고급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "ICBMA(스마트기술) 10회, IT기술동향 15회", "onet_im": "Judgment and Decision Making 3.59", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "ncsClposInfo 책임 AI 서비스 기획자(L5) 8명 - 가장 두꺼운 직책. ncsFusInfo: 인공지능서비스기획-플랫폼·모델링·구현·운영 4-way 연관(요소 >=27건)", "color": "#E91E63", "border": "#555", "importance": 0.82}}, {"data": {"id": "node-022", "label": "AI 모델 고도화·MLOps", "level": 4, "difficulty": "고급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 48, "work24_freq": "MLOps 관련 지식 4회(15위)", "onet_im": "Active Learning 3.54", "pypi_monthly": "mlflow 34M/월, wandb 23M/월, ray 51M/월 (합산 108M)", "github_stars": "GitHub tech_signal 11개", "hf_papers": "-", "note": "NCS ncs_covered(MLOps). NCS 인공지능 모델 검증·서빙·안전성검토 L4~L7 매핑", "color": "#E91E63", "border": "#555", "importance": 0.83}}, {"data": {"id": "node-023", "label": "클라우드·인프라 아키텐처 (고급)", "level": 4, "difficulty": "고급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "클라우드 관련 (간접)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "ncsClposInfo 클라우드 솔루션 아키텍트 L6~L7만 존재 - 고급 진입 직책. NCS 클라우드솔루션 요구사항분석·구조설계·보안설계 L7 매핑", "color": "#E91E63", "border": "#555", "importance": 0.78}}, {"data": {"id": "node-024", "label": "보안 사고 분석·대응", "level": 4, "difficulty": "고급", "ncs_coverage": "covered", "consensus": "합의", "duration_hours": 40, "work24_freq": "ISO/IEC 27001 12회, 보안 직무 전반", "onet_im": "Judgment and Decision Making 3.59", "pypi_monthly": "-", "github_stars": "-", "hf_papers": "-", "note": "NCS 보안사고분석대응 위협탐지 L4 ~ 체계수립 L8 + 모의해킹 L5 매핑", "color": "#E91E63", "border": "#555", "importance": 0.79}}, {"data": {"id": "node-026", "label": "AI 에이전트·자동화 워크플로", "level": 4, "difficulty": "고급", "ncs_coverage": "leading_signal", "consensus": "합의", "duration_hours": 32, "work24_freq": "0 (미검출)", "onet_im": "Complex Problem Solving 3.65", "pypi_monthly": "langchain agent 모듈 포함 (231M)", "github_stars": "AutoGPT 184k★, Dify 139k★, 7 repos 감지", "hf_papers": "reasoning 3회, chain-of-thought 4회", "note": "NCS 미등재 leading_signal. HR 즉시 승격 권고 4건 중 하나. N25-B RAG 선수", "color": "#E91E63", "border": "#9C27B0", "importance": 0.8}}, {"data": {"id": "node-027", "label": "IaC·플랫폼 엔지니어링 (Terraform·Kubernetes)", "level": 4, "difficulty": "고급", "ncs_coverage": "leading_signal", "consensus": "합의", "duration_hours": 40, "work24_freq": "0 (미검출)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "-", "github_stars": "kubernetes topic 19 repos, GitHub tech_signal 28", "hf_papers": "-", "note": "StackOverflow terraform 20k 태그(5위). HR 즉시 승격 권고(Kubernetes·IaC 임계 초과). N11+N20 선수", "color": "#E91E63", "border": "#9C27B0", "importance": 0.81}}, {"data": {"id": "node-028", "label": "DevSecOps·공급망 보안", "level": 4, "difficulty": "고급", "ncs_coverage": "leading_signal", "consensus": "합의", "duration_hours": 24, "work24_freq": "0 (미검출)", "onet_im": "Judgment and Decision Making 3.59", "pypi_monthly": "-", "github_stars": "Trivy 35k★, 8 repos 감지, StackOverflow devsecops 52 태그", "hf_papers": "-", "note": "NCS 미등재 leading_signal. N19 보안엔지니어링 + N20 DevOps 선수", "color": "#E91E63", "border": "#9C27B0", "importance": 0.74}}, {"data": {"id": "node-029", "label": "캐프스톤·실전 프로젝트", "level": 4, "difficulty": "고급", "ncs_coverage": "not_covered", "consensus": "edu_override", "duration_hours": 80, "work24_freq": "0 (미검출)", "onet_im": "Active Learning 3.54, Complex Problem Solving 3.65", "pypi_monthly": "-", "github_stars": "Microsoft AI for Beginners 46,997★ (12주 과정 구조 참조)", "hf_papers": "-", "note": "블름 6단계 창조(Create) 목표. 교육 설계 원칙상 필수. 핵심 노드(N06·N08·N13·N20·N22) 선이수 후 진입", "color": "#E91E63", "border": "#9E9E9E", "importance": 0.72}}, {"data": {"id": "node-030", "label": "데이터 엔지니어링 워크플로 (Airflow·dbt·GX)", "level": 4, "difficulty": "고급", "ncs_coverage": "not_covered", "consensus": "field_override", "duration_hours": 32, "work24_freq": "0 (미검출)", "onet_im": "Systems Analysis 3.53", "pypi_monthly": "dbt-core 94M/월, great-expectations 29M/월, apache-airflow 19M/월 (합산 142M)", "github_stars": "apache/airflow 45k★", "hf_papers": "-", "note": "NCS 미등재. 데이터아키텐처 ncsFusInfo 핀테크 한정 - 데이터엔지니어링 표준 미흡. PyPI 합산 142M/월 - Field 정량 우세. HR 기권", "color": "#E91E63", "border": "#9E9E9E", "importance": 0.66}}, {"data": {"source": "node-002", "target": "node-006", "relation": "prerequisite", "strength": 0.95, "reason": "NCS ncsFusInfo: 빅데이터수집시스템개발(L4) 선수로 프로그래밍언어활용 명시. pandas 전처리 위해 Python 문법 필수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-002", "target": "node-009", "relation": "prerequisite", "strength": 0.9, "reason": "NCS 위계: 변수·반복 이해 후 객체지향·웹 진입. 응용SW엔지니어링 L2-L5", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-002", "target": "node-010", "relation": "prerequisite", "strength": 0.88, "reason": "NCS 응용SW엔지니어링: 코드가 있어야 형상관리 의미. 형상관리 능력단위 선수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-003", "target": "node-008", "relation": "prerequisite", "strength": 0.92, "reason": "NCS 인공지능 모델 학습(L5) K3: 손실함수·확률·미분 이해 전제. O*NET Mathematics IM 3.73", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-003", "target": "node-016", "relation": "prerequisite", "strength": 0.75, "reason": "NCS 통계 기반 데이터 분석(L5) - 빅데이터플랫폼 학습 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-004", "target": "node-006", "relation": "prerequisite", "strength": 0.88, "reason": "NCS DB엔지니어링: SQL 없이 정형 데이터 추출 불가. DB엔지니어링-빅데이터분석 연관", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-005", "target": "node-019", "relation": "prerequisite", "strength": 0.9, "reason": "NCS 정보보호관리·운영: 위협 모델·법규 인식 선행. 보안기초-보안엔지니어링 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-005", "target": "node-028", "relation": "prerequisite", "strength": 0.85, "reason": "NCS 보안 컴플라이언스 기초 위에 Shift-Left DevSecOps. 법규 이해-보안 통합 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-006", "target": "node-007", "relation": "prerequisite", "strength": 0.9, "reason": "NCS 빅데이터분석: 클린 데이터셋 없이 시각화 무의미. 전처리-시각화 L6 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-006", "target": "node-008", "relation": "prerequisite", "strength": 0.92, "reason": "NCS ncsFusInfo: 인공지능 데이터 전처리-모델 학습 직접 연관. 결측·인코딩·특징 추출 선수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-006", "target": "node-016", "relation": "prerequisite", "strength": 0.8, "reason": "NCS: 데이터 수집·저장 시스템 이해 후 빅데이터플랫폼 설계 진입", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-008", "target": "node-013", "relation": "prerequisite", "strength": 0.92, "reason": "NCS 인공지능모델링: 지도학습·평가지표 없이 신경망 이해 불가. ML기초-딥러닝 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-008", "target": "node-014", "relation": "prerequisite", "strength": 0.88, "reason": "NCS: 분류·임베딩 개념 선행. 인공지능모델링 기초-NLP 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-008", "target": "node-015", "relation": "prerequisite", "strength": 0.88, "reason": "NCS: 분류 모델·평가지표 선행. 인공지능모델링 기초-CV 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-009", "target": "node-017", "relation": "prerequisite", "strength": 0.85, "reason": "NCS SW아키텐처: 객체지향·디자인패턴 선행. 응용SW-SW아키텐처 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-009", "target": "node-020", "relation": "prerequisite", "strength": 0.88, "reason": "NCS 응용SW엔지니어링: 빌드 가능한 앱이 있어야 CI/CD 의미. 응용SW-DevOps 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-010", "target": "node-020", "relation": "prerequisite", "strength": 0.9, "reason": "NCS ncsFusInfo: 형상관리 없이 CI/CD 불가. Git-CI/CD 파이프라인 직접 연관", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-011", "target": "node-020", "relation": "prerequisite", "strength": 0.85, "reason": "NCS: 컨테이너(Docker) 이해 후 CI/CD 파이프라인 구성. 클라우드기초-DevOps", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-011", "target": "node-023", "relation": "prerequisite", "strength": 0.82, "reason": "NCS: IaaS 기본 위에 멀티계층 클라우드 설계 진입. 클라우드기초-아키텐처 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-011", "target": "node-027", "relation": "prerequisite", "strength": 0.88, "reason": "NCS: Docker 컨테이너 이해 후 K8s·IaC 진입. GitHub kubernetes topic 19 repos", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-012", "target": "node-019", "relation": "prerequisite", "strength": 0.88, "reason": "NCS 보안엔지니어링: TCP/IP·OS 없이 보안장비 운용 불가. NW엔지니어링-보안엔지니어링", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-012", "target": "node-018", "relation": "prerequisite", "strength": 0.8, "reason": "NCS ncsFusInfo: IoT시스템연동과 네트워크·시스템 22건 연관. 네트워크기초-IoT 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-013", "target": "node-014", "relation": "prerequisite", "strength": 0.85, "reason": "NCS: RNN·Transformer 이해를 위해 딥러닝 기초 선행. 딥러닝-NLP 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-013", "target": "node-015", "relation": "prerequisite", "strength": 0.85, "reason": "NCS: CNN 이해를 위해 딥러닝 기초 선행. 딥러닝-CV 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-013", "target": "node-022", "relation": "prerequisite", "strength": 0.9, "reason": "NCS ncsFusInfo: 신경망 학습 경험 후 모델 검증·서빙·MLOps 진입. 딥러닝-MLOps 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-014", "target": "node-025a", "relation": "prerequisite", "strength": 0.92, "reason": "NCS: 임베딩·언어모델 이해 위에 LLM 응용 진입. NLP-생성형AI 기초 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-015", "target": "node-025a", "relation": "prerequisite", "strength": 0.78, "reason": "NCS: 멀티모달 LLM 이해를 위해 비전 모델 선행. CV-생성형AI 기초 연관", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-016", "target": "node-022", "relation": "prerequisite", "strength": 0.85, "reason": "NCS: 데이터 파이프라인 이해 위에 MLOps 진입. 빅데이터플랫폼-AI모델운영 위계", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-017", "target": "node-023", "relation": "prerequisite", "strength": 0.82, "reason": "NCS: SW 아키텐처 기본 위에 클라우드 아키텐처 설계. SW아키텐처-클라우드아키텐처", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-019", "target": "node-024", "relation": "prerequisite", "strength": 0.9, "reason": "NCS 보안사고분석대응: 탐지·차단 기술 위에 포렌식·사고대응 진입. 보안엔지니어링-사고대응", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-019", "target": "node-028", "relation": "prerequisite", "strength": 0.85, "reason": "NCS: 보안 기본 위에 DevSecOps 파이프라인 통합. 보안엔지니어링-Shift-Left", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-020", "target": "node-022", "relation": "prerequisite", "strength": 0.88, "reason": "NCS: CI/CD 위에 MLOps(CT 단계 추가). DevOps-MLOps 위계. PyPI mlflow 34M/월", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-020", "target": "node-027", "relation": "prerequisite", "strength": 0.9, "reason": "NCS: CI/CD 파이프라인 위에 IaC·K8s 운영. GitHub terraform StackOverflow 20k 태그", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-020", "target": "node-028", "relation": "prerequisite", "strength": 0.85, "reason": "NCS: CI/CD 파이프라인에 보안 스캐 통합. DevOps-DevSecOps Shift-Left", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-025a", "target": "node-025b", "relation": "prerequisite", "strength": 0.92, "reason": "debate_log 충돌 #5: LLM 개념·임베딩 이해 후 RAG 파이프라인 구현. PyPI langchain 231M+chromadb 13M", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-025b", "target": "node-026", "relation": "prerequisite", "strength": 0.88, "reason": "RAG 파이프라인(도구사용 기초) 위에 에이전트 아키텐처 진입. AutoGPT 184k★, Dify 139k★", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-001", "target": "node-021", "relation": "prerequisite", "strength": 0.8, "reason": "NCS ncsFusInfo: 인공지능서비스기획 도메인 이해·윤리 기초 선행. 디지털·AI 리터러시-서비스기획", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-016", "target": "node-021", "relation": "prerequisite", "strength": 0.75, "reason": "NCS ncsFusInfo: 인공지능서비스기획-빅데이터운영 연관 120건. 데이터 운영 이해 후 서비스 기획", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-022", "target": "node-021", "relation": "prerequisite", "strength": 0.78, "reason": "NCS ncsFusInfo: 모델 운영 경험 후 실효적 AI 서비스 기획. MLOps-서비스기획 연관", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-016", "target": "node-030", "relation": "prerequisite", "strength": 0.85, "reason": "debate_log 충돌 #6: 빅데이터 플랫폼 이해 위에 오케스트레이션 레이어. PyPI dbt-core 94M+airflow 19M", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-006", "target": "node-029", "relation": "prerequisite", "strength": 0.8, "reason": "캐프스톤 기본 선수: 데이터 수집·전처리 경험 필수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-008", "target": "node-029", "relation": "prerequisite", "strength": 0.8, "reason": "캐프스톤 기본 선수: ML 기초 경험 필수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-013", "target": "node-029", "relation": "prerequisite", "strength": 0.8, "reason": "캐프스톤 기본 선수: 딥러닝 구현 경험 필수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-020", "target": "node-029", "relation": "prerequisite", "strength": 0.8, "reason": "캐프스톤 기본 선수: DevOps·배포 파이프라인 경험 필수", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-022", "target": "node-029", "relation": "prerequisite", "strength": 0.82, "reason": "캐프스톤 기본 선수: MLOps 운영 경험 후 End-to-End 프로젝트 완성", "line_style": "solid", "line_color": "#555"}}, {"data": {"source": "node-007", "target": "node-016", "relation": "recommended", "strength": 0.65, "reason": "시각화 결과를 빅데이터 운영 대시보드로 확장 - 선택 심화 경로", "line_style": "dashed", "line_color": "#aaa"}}, {"data": {"source": "node-009", "target": "node-025a", "relation": "recommended", "strength": 0.7, "reason": "TypeScript·웹 지식으로 LLM 앱 구현 (Next.js+OpenAI 패턴) - StackOverflow typescript 235k", "line_style": "dashed", "line_color": "#aaa"}}, {"data": {"source": "node-018", "target": "node-026", "relation": "recommended", "strength": 0.6, "reason": "IoT 센서 데이터 수집 - AI 에이전트 자동화 확장 - ncsFusInfo IoT-AI모델링 20건", "line_style": "dashed", "line_color": "#aaa"}}, {"data": {"source": "node-023", "target": "node-027", "relation": "recommended", "strength": 0.72, "reason": "클라우드 아키텐처 + IaC 동시 학습 시너지 - N23(설계)·N27(구현) 상보 관계", "line_style": "dashed", "line_color": "#aaa"}}, {"data": {"source": "node-024", "target": "node-028", "relation": "recommended", "strength": 0.68, "reason": "사고 분석 경험 - DevSecOps 도구 우선순위 판단에 도움 - 실무 연계", "line_style": "dashed", "line_color": "#aaa"}}];
+
+let cy;
+
+function initCy(elements) {
+  cy = cytoscape({
+    container: document.getElementById('cy'),
+    elements: elements,
+    style: [
+      {
+        selector: 'node',
+        style: {
+          'background-color': 'data(color)',
+          'border-color': 'data(border)',
+          'border-width': 3,
+          'label': 'data(label)',
+          'color': '#fff',
+          'font-size': '11px',
+          'text-wrap': 'wrap',
+          'text-max-width': '120px',
+          'text-valign': 'center',
+          'text-halign': 'center',
+          'width': function(ele){ return 30 + ele.data('importance') * 50; },
+          'height': function(ele){ return 30 + ele.data('importance') * 50; },
+          'text-outline-color': '#000',
+          'text-outline-width': 1,
+          'transition-property': 'background-color, border-width',
+          'transition-duration': '0.2s'
+        }
+      },
+      {
+        selector: 'node:selected',
+        style: { 'border-width': 5, 'border-color': '#FFD700' }
+      },
+      {
+        selector: 'edge',
+        style: {
+          'width': function(e){ return e.data('strength') * 3; },
+          'line-color': 'data(line_color)',
+          'line-style': 'data(line_style)',
+          'target-arrow-color': 'data(line_color)',
+          'target-arrow-shape': 'triangle',
+          'curve-style': 'bezier',
+          'opacity': 0.7
+        }
+      },
+      {
+        selector: 'edge:selected',
+        style: { 'opacity': 1, 'line-color': '#FFD700', 'target-arrow-color': '#FFD700' }
+      },
+      {
+        selector: '.faded',
+        style: { 'opacity': 0.15 }
+      }
+    ],
+    layout: {
+      name: 'breadthfirst',
+      directed: true,
+      padding: 40,
+      spacingFactor: 1.4,
+      roots: '#node-001, #node-002, #node-003, #node-004, #node-005'
+    },
+    wheelSensitivity: 0.3
+  });
+
+  document.getElementById('stat-nodes').textContent = cy.nodes().length;
+  document.getElementById('stat-edges').textContent = cy.edges().length;
+  document.getElementById('stat-prereq').textContent = cy.edges('[relation="prerequisite"]').length;
+
+  cy.on('tap', 'node', function(e) {
+    const d = e.target.data();
+    showNodeDetail(d);
+    cy.elements().addClass('faded');
+    e.target.removeClass('faded');
+    e.target.neighborhood().removeClass('faded');
+    e.target.connectedEdges().removeClass('faded');
+  });
+
+  cy.on('tap', function(e) {
+    if (e.target === cy) {
+      cy.elements().removeClass('faded');
+      document.getElementById('node-detail').innerHTML = '<span style="color:#666">노드를 클릭하면 데이터 근거를 확인할 수 있습니다.</span>';
+    }
+  });
+}
+
+function showNodeDetail(d) {
+  const consensusBadge = `<span class="badge badge-${d.consensus}">${d.consensus}</span>`;
+  const coverageBadge = `<span class="badge badge-${d.ncs_coverage}">${d.ncs_coverage}</span>`;
+
+  document.getElementById('node-detail').innerHTML = `
+    <div class="detail-row">
+      <div class="detail-label">노드</div>
+      <div class="detail-value" style="font-weight:bold;color:#FFD700">${d.label}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">레벨 / 시간</div>
+      <div class="detail-value">L${d.level} ${d.difficulty} / ${d.duration_hours}h</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">합의 / NCS 커버</div>
+      <div class="detail-value">${consensusBadge} ${coverageBadge}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">Work24 빈도</div>
+      <div class="detail-value">${d.work24_freq}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">O*NET IM</div>
+      <div class="detail-value">${d.onet_im}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">PyPI 월간 다운로드</div>
+      <div class="detail-value">${d.pypi_monthly}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">GitHub Stars</div>
+      <div class="detail-value">${d.github_stars}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">HF Daily Papers</div>
+      <div class="detail-value">${d.hf_papers}</div>
+    </div>
+    <div class="detail-row">
+      <div class="detail-label">근거 노트</div>
+      <div class="detail-value" style="color:#bbb;font-size:11px">${d.note}</div>
+    </div>
+  `;
+}
+
+function filterLevel(level) {
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+
+  if (level === 0) {
+    cy.elements().removeClass('faded');
+  } else {
+    cy.nodes().addClass('faded');
+    cy.edges().addClass('faded');
+    const targets = cy.nodes(`[level = ${level}]`);
+    targets.removeClass('faded');
+    targets.connectedEdges().removeClass('faded');
+  }
+}
+
+function resetLayout() {
+  cy.layout({
+    name: 'breadthfirst',
+    directed: true,
+    padding: 40,
+    spacingFactor: 1.4,
+    roots: '#node-001, #node-002, #node-003, #node-004, #node-005'
+  }).run();
+}
+
+initCy(ELEMENTS);
+</script>
+</body>
+</html>

@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NCS 개선 하네스 구성도 — Agents & Skills</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    /* NIA palette */
+    --royal:#003A8C; --sky:#1890FF; --green:#52C41A;
+    --white:#FFFFFF; --grey:#F5F5F5; --border:#E8E8E8;
+    --ink:#262626; --muted:#8C8C8C;
+    --warning:#FAAD14; --danger:#FF4D4F;
+    --tint:rgba(24,144,255,.06);
+    --hero:linear-gradient(135deg,#003A8C 0%,#1890FF 100%);
+
+    --r-sm:4px; --r-md:8px; --r-lg:16px; --r-pill:999px;
+    --sh-card:0 2px 8px rgba(0,0,0,.05);
+    --sh-hover:0 8px 24px rgba(0,58,140,.12);
+    --sh-hero:0 12px 40px rgba(0,58,140,.16);
+    --ease:cubic-bezier(0.16,1,0.3,1);
+    --font:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--white);color:var(--ink);font-family:var(--font);font-weight:400;line-height:1.6;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1160px;margin:0 auto;padding:0 24px}
+  code{font-family:'Cascadia Code',Consolas,monospace;font-size:.86em;background:var(--grey);padding:2px 6px;border-radius:var(--r-sm);color:var(--royal)}
+
+  /* HERO */
+  .hero{background:var(--hero);color:#fff;padding:64px 0 56px;box-shadow:var(--sh-hero)}
+  .hero .badge{display:inline-block;font-size:12px;font-weight:500;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,.16);padding:6px 14px;border-radius:var(--r-pill);margin-bottom:20px}
+  .hero h1{font-size:36px;font-weight:700;margin:0 0 14px;line-height:1.3;letter-spacing:-.5px}
+  .hero p{font-size:16px;font-weight:300;max-width:680px;margin:0;color:rgba(255,255,255,.92)}
+  .hero .path{display:inline-block;margin-top:22px;font-family:'Cascadia Code',Consolas,monospace;font-size:13px;background:rgba(255,255,255,.12);padding:7px 14px;border-radius:var(--r-md);color:#fff}
+
+  /* STAT STRIP */
+  .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;margin:-36px auto 0;position:relative;z-index:3}
+  .stat{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);padding:20px 16px;text-align:center;box-shadow:var(--sh-card)}
+  .stat .v{font-size:32px;font-weight:700;line-height:1;letter-spacing:-1px}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:8px;letter-spacing:.5px}
+
+  /* SECTION */
+  section{padding:56px 0 8px}
+  .eyebrow{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sky)}
+  h2{font-size:24px;font-weight:700;margin:8px 0 6px;letter-spacing:-.3px}
+  .lead{color:var(--muted);font-size:15px;margin:0 0 28px;max-width:72ch}
+
+  /* LEGEND */
+  .legend{display:flex;flex-wrap:wrap;gap:18px;margin-top:18px}
+  .lg{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink)}
+  .dot{width:12px;height:12px;border-radius:3px}
+
+  /* ORCHESTRATOR */
+  .orch{background:var(--tint);border:1px solid #cfe5ff;border-left:5px solid var(--royal);border-radius:var(--r-md);padding:26px 28px}
+  .orch .top{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px}
+  .orch .k{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--royal)}
+  .orch .nm{font-size:21px;font-weight:700;margin-top:2px}
+  .orch .pp{font-family:monospace;font-size:12px;color:var(--muted)}
+  .orch .d{color:#444;font-size:14px;margin-top:12px;max-width:80ch}
+
+  /* PAIRS */
+  .pairs{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:18px}
+  .pair{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;box-shadow:var(--sh-card);transition:transform .25s var(--ease),box-shadow .25s var(--ease);border-top:4px solid var(--c,var(--sky))}
+  .pair:hover{transform:translateY(-4px);box-shadow:var(--sh-hover)}
+  .pair .ph{font-size:11px;font-weight:500;color:var(--c,var(--sky));padding:14px 18px 0;letter-spacing:.5px}
+  .pair .nm{font-size:18px;font-weight:700;padding:3px 18px 12px}
+  .layers{display:flex;border-top:1px solid var(--border)}
+  .layer{flex:1;padding:14px 18px}
+  .layer.sk{border-left:1px solid var(--border);background:#fbfcfe}
+  .tg{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px;padding:2px 8px;border-radius:var(--r-pill)}
+  .tg.a{color:var(--royal);background:rgba(0,58,140,.08)}
+  .tg.s{color:var(--green);background:rgba(82,196,26,.1)}
+  .layer .d{color:#555;font-size:12.5px;line-height:1.5}
+  .pair .out{padding:11px 18px;background:var(--grey);border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+  .pair .out code{background:#fff;border:1px solid var(--border)}
+
+  /* PIPELINE */
+  .flow{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:34px 22px;overflow-x:auto}
+  .phases{display:flex;min-width:960px}
+  .phase{flex:1;display:flex;flex-direction:column;align-items:center;position:relative;padding:0 8px}
+  .phase:not(:last-child)::after{content:"";position:absolute;right:-2px;top:27px;width:calc(100% - 56px);height:2px;background:var(--border);transform:translateX(28px);z-index:0}
+  .phase:not(:last-child) .arr{position:absolute;right:-8px;top:19px;color:var(--sky);font-size:18px;z-index:2}
+  .pnum{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:18px;color:#fff;z-index:1;box-shadow:0 4px 10px rgba(0,58,140,.18)}
+  .ptitle{font-size:13px;font-weight:700;margin:12px 0 10px;text-align:center;min-height:34px}
+  .pmem{display:flex;flex-direction:column;gap:6px;width:100%}
+  .chip{font-size:11.5px;text-align:center;padding:6px 8px;border-radius:var(--r-sm);background:var(--grey);border:1px solid var(--border);color:#555}
+  .chip.ag{background:var(--tint);border-color:#cfe5ff;color:var(--royal);font-weight:500}
+  .plbl{font-size:10px;color:var(--muted);text-align:center;margin-top:3px}
+
+  /* DELIBERATION */
+  .delib{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:30px 24px}
+  .tri{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:6px}
+  .node{border-radius:var(--r-md);padding:16px 22px;text-align:center;min-width:170px;border:1px solid var(--border);background:var(--grey)}
+  .node .nt{font-weight:700;font-size:15px}
+  .node .ns{font-size:12px;color:var(--muted);margin-top:4px}
+  .node.mod{background:rgba(0,58,140,.06);border-color:#cfe5ff}
+  .node.mod .nt{color:var(--royal)}
+  .node.ind .nt{color:var(--sky)}
+  .node.aca .nt{color:var(--green)}
+  .bi{font-size:22px;color:var(--sky);margin:0 8px}
+  .judge{text-align:center;color:#555;font-size:13px;margin-top:18px;padding:14px;background:var(--grey);border-radius:var(--r-md)}
+  .agendas{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+  .pill{font-size:12px;padding:7px 14px;border-radius:var(--r-pill);background:#fff;border:1px solid var(--border);color:#555}
+  .pill.hl{background:rgba(250,173,20,.12);border-color:#ffe0a3;color:#996a00;font-weight:500}
+
+  /* FILES */
+  .files{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .fcol{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:20px}
+  .fcol h4{margin:0 0 14px;font-size:12px;letter-spacing:1px;text-transform:uppercase;font-weight:700}
+  .file{font-family:'Cascadia Code',Consolas,monospace;font-size:11.5px;color:#555;padding:7px 10px;border-radius:var(--r-sm);background:var(--grey);margin-bottom:7px;border-left:3px solid var(--c,var(--sky))}
+  .file b{color:var(--ink)}
+
+  /* REFS + STANDALONE */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .refs{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:14px}
+  .ref{background:#fff;border:1px solid var(--border);border-left:4px solid #722ed1;border-radius:var(--r-md);box-shadow:var(--sh-card);padding:16px 18px}
+  .ref .rn{font-weight:700;font-size:14px;color:#531dab}
+  .ref ul{margin:9px 0 0;padding-left:18px;color:#555;font-size:12px}
+  .ref li{margin:8px 0;font-family:'Cascadia Code',Consolas,monospace}
+  .ref li i{display:block;font-family:var(--font);font-style:normal;font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+  .stand{display:flex;gap:16px;flex-wrap:wrap}
+  .scard{flex:1;min-width:300px;background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:22px;border-top:4px solid var(--c)}
+  .scard .sn{font-weight:700;font-size:16px;margin-bottom:6px}
+  .scard .sd{color:#555;font-size:13px}
+
+  footer{margin-top:64px;background:var(--grey);border-top:1px solid var(--border);padding:28px 0;color:var(--muted);font-size:12.5px}
+
+  @media(max-width:780px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .grid2{grid-template-columns:1fr}
+    .layers{flex-direction:column}.layer.sk{border-left:0;border-top:1px solid var(--border)}
+    .hero h1{font-size:28px}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <span class="badge">NCS · AI Deliberation Harness</span>
+    <h1>NCS 개선 하네스 구성도</h1>
+    <p>2026년 NCS 개발·개선 매뉴얼의 「산업현장 7 + 교육훈련 3」 위원회 구조를 AI 멀티-페르소나 토론으로 시뮬레이션하는 에이전트 하네스. 8개 Agent와 10개 Skill이 1:1로 짝지어 파일 기반으로 협업합니다.</p>
+    <span class="path">D:\ncs project\NCS PROJECT\.claude\</span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="stats">
+    <div class="stat"><div class="v" style="color:var(--royal)">8</div><div class="l">Agents</div></div>
+    <div class="stat"><div class="v" style="color:var(--green)">10</div><div class="l">Skills</div></div>
+    <div class="stat"><div class="v" style="color:#722ed1">6</div><div class="l">References</div></div>
+    <div class="stat"><div class="v" style="color:var(--sky)">7</div><div class="l">Phases (0–6)</div></div>
+    <div class="stat"><div class="v" style="color:var(--warning)">10</div><div class="l">페르소나 P1–P10</div></div>
+  </div>
+
+  <section>
+    <div class="eyebrow">Entry Point</div>
+    <h2>진입점 · 오케스트레이터</h2>
+    <p class="lead">사용자가 NCS 관련 작업을 요청하면 가장 먼저 트리거되는 단일 진입점입니다.</p>
+    <div class="orch">
+      <div class="top">
+        <div>
+          <div class="k">◆ Orchestrator Skill</div>
+          <div class="nm">ncs-deliberation-orchestrator</div>
+        </div>
+        <div class="pp">skills/ncs-deliberation-orchestrator/</div>
+      </div>
+      <div class="d"><i>"NCS 개선 / 환경분석 개선 / 능력단위 개선 / 전체 진행 / 재실행"</i> 등을 요청하면 Phase 0~6을 조율하며 아래 8개 Agent를 팀(TeamCreate)으로 묶고 작업(TaskCreate)을 분배합니다.<br> 단독 skill로 <b>조율 전용</b>으로 동작합니다.</div>
+    </div>
+    <div class="legend">
+      <span class="lg"><span class="dot" style="background:var(--royal)"></span>Agent(직원) · 역할 정의</span>
+      <span class="lg"><span class="dot" style="background:var(--green)"></span>Skill(메뉴얼) · 트리거·절차</span>
+      <span class="lg"><span class="dot" style="background:#722ed1"></span>Reference · 참조 데이터</span>
+      <span class="lg"><span class="dot" style="background:var(--sky)"></span>Data file · 파일 전달</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Pairing</div>
+    <h2>Agent ↔ Skill 매칭 (8쌍)</h2>
+    <p class="lead">동일 이름의 <b>Agent</b>(누가·어떤 페르소나로)와 <b>Skill</b>(언제 트리거·어떤 절차로)이<br> 한 쌍을 이룹니다. (실행 순서(Phase) 기준 정렬).</p>
+    <div class="pairs">
+
+      <div class="pair" style="--c:var(--sky)">
+        <div class="ph">PHASE 1 · 데이터 준비 (병렬)</div>
+        <div class="nm">pdf-extractor</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">PDF 34종(능력단위·학습모듈·환경분석·활용패키지·매뉴얼) → 정제 MD 변환</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"PDF 변환·문서 정제·토큰 절약" 트리거 → extract_pdfs.py</div></div>
+        </div>
+        <div class="out">출력 → <code>data/extracted/{category}/*.md</code></div>
+      </div>
+
+      <div class="pair" style="--c:var(--sky)">
+        <div class="ph">PHASE 1 · 데이터 준비 (병렬)</div>
+        <div class="nm">api-fetcher</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">공공데이터포털 5종 + Work24 + O*NET 정량 데이터 수집·캐싱(TTL 30일)</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"API 수집·NCS API 호출·데이터 갱신" 트리거 → fetch_apis.py</div></div>
+        </div>
+        <div class="out">출력 → <code>data/api/{source}/*.json</code></div>
+      </div>
+
+      <div class="pair" style="--c:var(--warning)">
+        <div class="ph">PHASE 2 · 페르소나 빌드</div>
+        <div class="nm">persona-builder</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">토론 위원 10명의 역할 틀(현장 7+학계 3)에 실제 수치 데이터를 입혀 데이터 기반 페르소나 카드 10장 생성</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"페르소나 생성·토론 멤버 구성" 트리거 → schema 검증</div></div>
+        </div>
+        <div class="out">출력 → <code>personas.json</code> (P1~P10)</div>
+      </div>
+
+      <div class="pair" style="--c:var(--royal)">
+        <div class="ph">PHASE 3 · 토론</div>
+        <div class="nm">industry-panel</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">산업현장 전문가 7명(P1~P7)을 한 호출에서 멀티-페르소나로 의견 생성</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"현장 패널 의견·제조업 관점" 트리거. 학계 패널과 의견을 주고받으며 토론</div></div>
+        </div>
+        <div class="out">출력 → <code>round_{N}_industry.md</code></div>
+      </div>
+
+      <div class="pair" style="--c:var(--green)">
+        <div class="ph">PHASE 3 · 토론</div>
+        <div class="nm">academic-panel</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">교육훈련 전문가 3명(P8 대학·P9 전문대/자격·P10 직업계고) 멀티-페르소나</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"학계 패널·교수 관점·자격 출제 관점" 트리거. industry-panel과 상호 비평</div></div>
+        </div>
+        <div class="out">출력 → <code>round_{N}_academic.md</code></div>
+      </div>
+
+      <div class="pair" style="--c:var(--royal)">
+        <div class="ph">PHASE 3 · 토론 (의장)</div>
+        <div class="nm">moderator</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">환경분석 4개 주제를 안건으로 나눠 토론을 진행하고, 현장·학계 의견을 7:3 비중으로 모아 합의·다수의견·이견 중 하나로 결론</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"토론 진행·합의 판정·의장 역할" 트리거 → consensus_algorithm 참조</div></div>
+        </div>
+        <div class="out">출력 → <code>agenda.md · round_*_summary.md · consensus.json</code></div>
+      </div>
+
+      <div class="pair" style="--c:#FA8C16">
+        <div class="ph">PHASE 4 · 개선안 작성</div>
+        <div class="nm">drafter</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">consensus.json + 토론 산출물 종합 → 매뉴얼 양식의 NCS 개선안 작성, 모든 권고에 출처 인용</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"개선안 작성·드래프트·NCS 개선안 v2026" 트리거 → draft_template 참조</div></div>
+        </div>
+        <div class="out">출력 → <code>draft_{ncs}_v2026.md</code></div>
+      </div>
+
+      <div class="pair" style="--c:var(--danger)">
+        <div class="ph">PHASE 5 · 검증</div>
+        <div class="nm">validator</div>
+        <div class="layers">
+          <div class="layer"><span class="tg a">Agent</span><div class="d">양식 준수·합의 반영·4영역 누락·인용 검증을 경계면 교차 비교. 4단계 판정</div></div>
+          <div class="layer sk"><span class="tg s">Skill</span><div class="d">"개선안 검증·draft 검토·인용 검증" 트리거 → 체크리스트 7항</div></div>
+        </div>
+        <div class="out">출력 → <code>validation_report.md</code></div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Pipeline</div>
+    <h2>실행 파이프라인 · Phase 0 → 6</h2>
+    <p class="lead">오케스트레이터가 컨텍스트 확인부터 산출물 보고까지 7단계를 순차 조율합니다.</p>
+    <div class="flow">
+      <div class="phases">
+        <div class="phase"><span class="arr">›</span>
+          <div class="pnum" style="background:#8C8C8C">0</div>
+          <div class="ptitle">컨텍스트 확인</div>
+          <div class="pmem"><div class="chip">신규/재실행 판단</div><div class="chip">캐시 30일 체크</div></div>
+        </div>
+        <div class="phase"><span class="arr">›</span>
+          <div class="pnum" style="background:var(--sky)">1</div>
+          <div class="ptitle">데이터 준비</div>
+          <div class="pmem"><div class="chip ag">pdf-extractor</div><div class="chip ag">api-fetcher</div><div class="plbl">∥ 병렬</div></div>
+        </div>
+        <div class="phase"><span class="arr">›</span>
+          <div class="pnum" style="background:var(--warning)">2</div>
+          <div class="ptitle">페르소나 빌드</div>
+          <div class="pmem"><div class="chip ag">persona-builder</div><div class="plbl">P1–P10</div></div>
+        </div>
+        <div class="phase"><span class="arr">›</span>
+          <div class="pnum" style="background:var(--royal)">3</div>
+          <div class="ptitle">토론 (의제×라운드)</div>
+          <div class="pmem"><div class="chip ag">moderator</div><div class="chip ag">industry-panel</div><div class="chip ag">academic-panel</div></div>
+        </div>
+        <div class="phase"><span class="arr">›</span>
+          <div class="pnum" style="background:#FA8C16">4</div>
+          <div class="ptitle">개선안 작성</div>
+          <div class="pmem"><div class="chip ag">drafter</div><div class="plbl">⇄ validator 중간검토</div></div>
+        </div>
+        <div class="phase"><span class="arr">›</span>
+          <div class="pnum" style="background:var(--danger)">5</div>
+          <div class="ptitle">검증</div>
+          <div class="pmem"><div class="chip ag">validator</div><div class="plbl">4단계 판정</div></div>
+        </div>
+        <div class="phase">
+          <div class="pnum" style="background:var(--green)">6</div>
+          <div class="ptitle">산출물 정리·보고</div>
+          <div class="pmem"><div class="chip">루트 복사</div><div class="chip">요약 보고</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Core</div>
+    <h2>Phase 3 토론 구조</h2>
+    <p class="lead">하네스의 핵심. 의장(moderator)을 중심으로 두 패널이 의제별로 라운드를 거치며 가중 합의를 도출합니다.</p>
+    <div class="delib">
+      <div class="tri">
+        <div class="node ind"><div class="nt">industry-panel</div><div class="ns">산업현장 7명 · P1–P7</div></div>
+        <span class="bi">⇄</span>
+        <div class="node mod"><div class="nt">moderator · 의장</div><div class="ns">의제 분할 · 가중 7:3 판정</div></div>
+        <span class="bi">⇄</span>
+        <div class="node aca"><div class="nt">academic-panel</div><div class="ns">교육훈련 3명 · P8–P10</div></div>
+      </div>
+      <div class="judge">
+        moderator → 의제 송신 &nbsp;│&nbsp; panel 응답 → <code>judge_consensus()</code> &nbsp;│&nbsp; 가중합 ≥ 6.0 = <b style="color:var(--green)">합의</b>, 4.0–5.9 = <b style="color:var(--warning)">다수의견</b>, &lt; 4.0 = <b style="color:var(--danger)">재토론</b>
+      </div>
+      <div class="agendas">
+        <span class="pill">의제① 노동시장</span>
+        <span class="pill">의제② 교육훈련현황</span>
+        <span class="pill">의제③ 능력단위</span>
+        <span class="pill">의제④ 활용패키지</span>
+        <span class="pill hl">각 의제 = 최대 3 라운드</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">Data Flow</div>
+    <h2>파일 기반 데이터 전달</h2>
+    <p class="lead">에이전트는 직접 통신 대신 정해진 경로의 파일로 산출물을 주고받습니다.</p>
+    <div class="files">
+      <div class="fcol">
+        <h4 style="color:var(--sky)">data/ · 준비 자산</h4>
+        <div class="file"><b>extracted/</b>{category}/*.md</div>
+        <div class="file"><b>api/</b>{source}/*.json</div>
+        <div class="file"><b>onet/</b>*.csv</div>
+        <div class="file">_extraction_report.json</div>
+        <div class="file">_fetch_summary.json</div>
+      </div>
+      <div class="fcol">
+        <h4 style="color:var(--warning)">_workspace_new/ · 토론 산출</h4>
+        <div class="file" style="--c:var(--warning)"><b>personas.json</b> P1–P10</div>
+        <div class="file" style="--c:var(--warning)">agenda.md</div>
+        <div class="file" style="--c:var(--warning)">round_{N}_industry.md</div>
+        <div class="file" style="--c:var(--warning)">round_{N}_academic.md</div>
+        <div class="file" style="--c:var(--warning)">round_{N}_summary.md</div>
+        <div class="file" style="--c:var(--warning)"><b>consensus.json</b></div>
+      </div>
+      <div class="fcol">
+        <h4 style="color:#FA8C16">최종 산출물</h4>
+        <div class="file" style="--c:#FA8C16"><b>draft_</b>{ncs}_v2026.md</div>
+        <div class="file" style="--c:var(--danger)"><b>validation_report.md</b></div>
+        <div class="file" style="--c:var(--green)">→ 루트: {ncs}_개선안_v2026.md</div>
+        <div class="file" style="--c:var(--green)">→ 루트: {ncs}_검증보고서_v2026.md</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="grid2">
+      <div>
+        <div class="eyebrow">Assets</div>
+        <h2>Skill 참고 파일</h2>
+        <p class="lead">각 Skill 매뉴얼이 참고하는 별도 자료입니다.</p>
+        <div class="refs">
+          <div class="ref"><div class="rn">persona-builder</div><ul>
+            <li>persona_schema.json<i>페르소나 카드가 갖춰야 할 항목·형식 규격</i></li>
+            <li>panel_distribution.yaml<i>토론 위원 10명의 구성·역할 배분 정의</i></li></ul></div>
+          <div class="ref"><div class="rn">moderator</div><ul>
+            <li>consensus_algorithm.md<i>의견을 점수화해 합의·다수·이견을 가르는 계산 규칙</i></li></ul></div>
+          <div class="ref"><div class="rn">drafter</div><ul>
+            <li>draft_template.md<i>개선안 문서의 표준 양식(목차·머리말)</i></li></ul></div>
+          <div class="ref"><div class="rn">orchestrator</div><ul>
+            <li>trigger_test.md<i>어떤 요청에 하네스가 켜져야 하는지 점검 시나리오</i></li></ul></div>
+          <div class="ref"><div class="rn">ncs-learning-page</div><ul>
+            <li>component_patterns.md<i>HTML 화면 구성요소(히어로·카드 등) 패턴집</i></li>
+            <li>design_tokens.md<i>색상·여백·폰트 등 NIA 디자인 규격</i></li></ul></div>
+        </div>
+      </div>
+      <div>
+        <div class="eyebrow">Standalone</div>
+        <h2>독립 Skill</h2>
+        <p class="lead">대응 Agent 없이 단독으로 동작하는 Skill입니다.</p>
+        <div class="stand">
+          <div class="scard" style="--c:var(--royal)">
+            <div class="sn" style="color:var(--royal)">ncs-deliberation-orchestrator</div>
+            <div class="sd">전체 진입점·조율자. 8개 Agent를 팀으로 묶어 Phase 0~6 자동 실행. 오케스트레이션 전용.</div>
+          </div>
+          <div class="scard" style="--c:#722ed1">
+            <div class="sn" style="color:#531dab">ncs-learning-page</div>
+            <div class="sd">개선안·환경분석·학습모듈 MD를 NIA 스타일 인터랙티브 단일파일 HTML 학습 페이지로 변환. 파이프라인 종료 후 시각화 옵션.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<footer>
+  <div class="wrap">
+    생성: 2026-06-11 · 대상 경로 <code>NCS PROJECT/.claude/{agents,skills}</code> 정적 분석 기반 · _archive_prev_2026-05-21 제외 · NIA 'AI·디지털 기본역량 진단' 디자인 톤
+  </div>
+</footer>
+
+</body>
+</html>

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>데이터 기반 KSA 도출 — 개선 아이디어</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --royal:#003A8C; --sky:#1890FF; --green:#52C41A;
+    --white:#FFFFFF; --grey:#F5F5F5; --border:#E8E8E8;
+    --ink:#262626; --muted:#8C8C8C;
+    --warning:#FAAD14; --danger:#FF4D4F;
+    --tint:rgba(24,144,255,.06);
+    --hero:linear-gradient(135deg,#003A8C 0%,#1890FF 100%);
+    --r-sm:4px; --r-md:8px; --r-lg:16px; --r-pill:999px;
+    --sh-card:0 2px 8px rgba(0,0,0,.05);
+    --sh-hover:0 8px 24px rgba(0,58,140,.12);
+    --sh-hero:0 12px 40px rgba(0,58,140,.16);
+    --ease:cubic-bezier(0.16,1,0.3,1);
+    --font:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--white);color:var(--ink);font-family:var(--font);line-height:1.65;-webkit-font-smoothing:antialiased;word-break:keep-all;overflow-wrap:break-word}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px}
+  code{font-family:'Cascadia Code',Consolas,monospace;font-size:.86em;background:var(--grey);padding:2px 6px;border-radius:var(--r-sm);color:var(--royal)}
+
+  /* HERO */
+  .hero{background:var(--hero);color:#fff;padding:66px 0 58px;box-shadow:var(--sh-hero)}
+  .hero .badge{display:inline-block;font-size:12px;font-weight:500;letter-spacing:2px;text-transform:uppercase;background:rgba(255,255,255,.16);padding:6px 14px;border-radius:var(--r-pill);margin-bottom:22px}
+  .hero h1{font-size:34px;font-weight:700;margin:0 0 18px;line-height:1.35;letter-spacing:-.5px}
+  .hero p{font-size:16px;font-weight:300;max-width:660px;margin:0 0 10px;color:rgba(255,255,255,.94)}
+  .hero .who{margin-top:20px;font-size:13px;color:rgba(255,255,255,.7)}
+
+  /* SECTION */
+  section{padding:54px 0 6px}
+  .step{font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--sky)}
+  h2{font-size:24px;font-weight:700;margin:8px 0 8px;letter-spacing:-.3px}
+  .lead{color:#555;font-size:15px;margin:0 0 26px;max-width:74ch}
+  p.body{color:#444;font-size:14.5px;max-width:74ch}
+
+  .card{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:24px}
+  .soft{background:var(--tint);border:1px solid #cfe5ff;border-radius:var(--r-md);padding:20px 22px}
+
+  /* PROBLEM */
+  .probs{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+  .prob{background:#fff;border:1px solid var(--border);border-left:4px solid var(--danger);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:16px 18px}
+  .prob b{display:block;font-size:14px;margin-bottom:5px}
+  .prob span{font-size:12.5px;color:#666}
+  .brokenflow{display:flex;align-items:center;gap:14px;margin-top:18px;flex-wrap:wrap;color:#777;font-size:13px}
+  .bf{background:var(--grey);border:1px solid var(--border);border-radius:var(--r-md);padding:10px 16px;font-weight:500;color:#444}
+  .bf.q{border-style:dashed;border-color:var(--danger);color:var(--danger)}
+
+  /* PIPELINE 3 BLOCK */
+  .p3{display:flex;align-items:stretch;gap:0;flex-wrap:wrap}
+  .p3 .blk{flex:1;min-width:200px;background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:20px;text-align:center;border-top:4px solid var(--c)}
+  .p3 .blk .t{font-weight:700;font-size:15px;margin-bottom:6px}
+  .p3 .blk .s{font-size:12.5px;color:#666}
+  .p3 .ar{display:flex;align-items:center;color:var(--sky);font-size:22px;padding:0 10px}
+
+  /* GRAPH EXAMPLE */
+  .gx{display:grid;grid-template-columns:1.1fr .9fr;gap:20px;align-items:center}
+  .nodemap{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:22px}
+  .rulelist{list-style:none;margin:0;padding:0}
+  .rulelist li{display:flex;gap:10px;align-items:flex-start;padding:12px 0;border-bottom:1px dashed var(--border);font-size:13.5px}
+  .rulelist li:last-child{border-bottom:0}
+  .ksa{flex-shrink:0;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:13px}
+  .ksa.k{background:var(--royal)} .ksa.s{background:var(--sky)} .ksa.a{background:var(--warning)}
+  .rulelist .ed{color:#666}
+  .rulelist .ed b{color:var(--ink)}
+  .linkbtn{display:inline-flex;align-items:center;gap:8px;margin-top:18px;background:var(--royal);color:#fff;text-decoration:none;font-weight:500;font-size:13.5px;padding:11px 18px;border-radius:var(--r-sm);transition:.2s var(--ease)}
+  .linkbtn:hover{background:#00306f;box-shadow:var(--sh-hover)}
+  .linkbtn .ar{font-size:16px}
+  /* mini node diagram (pure css/svg-ish) */
+  .ndiagram{display:flex;flex-direction:column;align-items:center;gap:0;font-size:12.5px}
+  .nrow{display:flex;align-items:center;justify-content:center;gap:10px;margin:4px 0;flex-wrap:wrap}
+  .nnode{padding:8px 14px;border-radius:var(--r-pill);font-weight:500;border:1.5px solid}
+  .n-task{background:#fff;border-color:#555;color:#333}
+  .n-con{background:rgba(0,58,140,.08);border-color:var(--royal);color:var(--royal)}
+  .n-tool{background:rgba(24,144,255,.1);border-color:var(--sky);color:#0b63b0}
+  .n-rule{background:rgba(250,173,20,.14);border-color:#d99300;color:#946600}
+  .nedge{color:#999;font-size:11px}
+
+  /* HEATMAP */
+  .hm{overflow-x:auto}
+  table.heat{border-collapse:separate;border-spacing:4px;font-size:12.5px;min-width:520px}
+  table.heat th{font-weight:500;color:#555;padding:6px 10px;text-align:center;font-size:12px}
+  table.heat td.rowh{text-align:left;color:#333;font-weight:500;white-space:nowrap;padding-right:8px}
+  .cell{width:120px;height:42px;border-radius:var(--r-sm);display:grid;place-items:center;color:#fff;font-weight:600;font-size:11.5px}
+  .c5{background:#237804} .c4{background:#52C41A} .c3{background:#FAAD14} .c2{background:#FA8C16} .c1{background:#FF4D4F}
+  .hmlegend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:12px;color:#666;align-items:center}
+  .hmlegend .sw{display:inline-block;width:14px;height:14px;border-radius:3px;margin-right:5px;vertical-align:-2px}
+
+  /* HUMAN LAYERS */
+  .layers2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .hl{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:22px;border-top:4px solid var(--c)}
+  .hl .hn{font-weight:700;font-size:16px;margin-bottom:4px}
+  .hl .hsub{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  .hl ul{margin:0;padding-left:18px;color:#444;font-size:13.5px}
+  .hl li{margin:7px 0}
+  .keybox{margin-top:20px;background:linear-gradient(135deg,rgba(0,58,140,.05),rgba(24,144,255,.08));border:1px solid #cfe5ff;border-left:5px solid var(--royal);border-radius:var(--r-md);padding:22px 24px}
+  .keybox .kk{font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--royal);margin-bottom:8px}
+  .keybox .kt{font-size:17px;font-weight:700;line-height:1.5}
+  .keybox .kd{font-size:14px;color:#444;margin-top:8px}
+
+  /* STAGE TIMELINE */
+  .stages{position:relative;margin-top:8px}
+  .stages::before{content:"";position:absolute;left:23px;top:8px;bottom:8px;width:2px;background:var(--border)}
+  .stg{position:relative;display:grid;grid-template-columns:48px 1fr;gap:16px;padding:10px 0 18px}
+  .stg .num{width:48px;height:48px;border-radius:50%;background:#fff;border:2px solid var(--c,var(--sky));color:var(--c,var(--sky));display:grid;place-items:center;font-weight:700;font-size:16px;z-index:1}
+  .stg .bd{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:16px 18px;border-left:4px solid var(--c,var(--sky))}
+  .stg .sname{font-weight:700;font-size:15.5px;margin-bottom:10px}
+  .stg .two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .stg .sys .lbl,.stg .hum .lbl{font-size:11px;font-weight:700;letter-spacing:.5px;margin-bottom:4px}
+  .stg .sys .lbl{color:var(--muted)}
+  .stg .hum .lbl{color:#946600}
+  .stg .sys p,.stg .hum p{margin:0;font-size:13px;color:#555}
+  .stg .hum{background:rgba(250,173,20,.08);border-radius:var(--r-sm);padding:10px 12px;margin:-10px -12px}
+  .stg.keypt .num{background:var(--royal);border-color:var(--royal);color:#fff}
+  .stg.keypt .bd{border-left-color:var(--royal)}
+  @media(max-width:680px){.stg .two{grid-template-columns:1fr}}
+
+  /* GATE TABLE */
+  table.gate{width:100%;border-collapse:collapse;margin-top:6px;font-size:13.5px}
+  table.gate th,table.gate td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border)}
+  table.gate th{background:var(--grey);font-size:12px;color:#555;font-weight:700}
+  table.gate td:first-child{font-weight:500;color:var(--royal)}
+  .badge-h{display:inline-block;font-size:11px;font-weight:700;color:#946600;background:rgba(250,173,20,.16);padding:2px 9px;border-radius:var(--r-pill)}
+
+  /* TWO LAYER COMBINE */
+  .combine{display:grid;grid-template-columns:1fr;gap:0}
+  .clayer{border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:18px 22px;background:#fff}
+  .clayer.evi{border-top:4px solid var(--sky)}
+  .clayer.jud{border-top:4px solid var(--warning);margin-top:0}
+  .clayer .ct{font-weight:700;font-size:15px}
+  .clayer .cd{font-size:13px;color:#555;margin-top:3px}
+  .cmid{text-align:center;color:var(--sky);font-size:22px;margin:6px 0}
+  .judge3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+  .j3{display:flex;gap:10px;align-items:flex-start;background:var(--grey);border:1px solid var(--border);border-radius:var(--r-sm);padding:13px 14px}
+  .j3n{flex-shrink:0;width:24px;height:24px;border-radius:50%;background:var(--warning);color:#fff;display:grid;place-items:center;font-weight:700;font-size:13px}
+  .j3 b{display:block;font-size:13.5px;margin-bottom:3px;color:#333}
+  .j3 span{font-size:12px;color:#666;line-height:1.45}
+  @media(max-width:760px){.judge3{grid-template-columns:1fr}}
+
+  /* LIMITS */
+  .limits{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:14px}
+  .lim{background:#fff;border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--sh-card);padding:16px 18px;border-left:4px solid var(--muted)}
+  .lim b{display:block;font-size:14px;margin-bottom:5px;color:#333}
+  .lim span{font-size:12.5px;color:#666}
+
+  footer{margin-top:62px;background:var(--grey);border-top:1px solid var(--border);padding:26px 0;color:var(--muted);font-size:12.5px}
+  .navback{display:inline-block;color:var(--royal);text-decoration:none;font-size:13px;font-weight:500}
+  .navback:hover{text-decoration:underline}
+
+  @media(max-width:760px){
+    .gx{grid-template-columns:1fr}
+    .layers2{grid-template-columns:1fr}
+    .hero h1{font-size:26px}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="wrap">
+    <span class="badge">Improvement Idea · 02</span>
+    <h1>지식·기술·태도를 데이터에서 끌어내고,<br>사람은 꼭 필요한 자리에서 판단한다</h1>
+    <p>NCS의 지식·기술·태도가 왜 그렇게 정해졌는지 되짚어 보면, 정작 그 근거가 잘 보이지 않습니다. 그래서 생각했습니다. 원본 데이터를 그래프로 엮어 두면, 어디가 근거가 약한지, 사람이 어느 대목에서 직접 판단해야 하는지가 함께 드러나지 않을까요.</p>
+    <div class="who">앞선 「NCS 개선 하네스 구성도」에 이어지는 다음 단계 제안</div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 1. 문제 -->
+  <section>
+    <div class="step">01 · 문제</div>
+    <h2>지금은 "왜 이게 들어갔는지"를 되묻기 어렵습니다</h2>
+    <p class="lead">지금은 전문가의 경험에서 곧바로 지식·기술·태도 목록이 나옵니다. 결과물의 완성도는 높지만, 항목 하나하나가 어디서 왔는지 되짚거나, 빠진 부분을 찾아내거나, 능력단위 사이의 중복을 잡아내기가 어렵습니다.</p>
+    <div class="probs">
+      <div class="prob"><b>근거를 알기 어렵다</b><span>"이 지식은 어떤 직무, 어떤 자료에서 나왔나요?"에 답하기 어렵습니다</span></div>
+      <div class="prob"><b>빠진 곳을 찾기 어렵다</b><span>무엇이 누락됐는지는 사람이 전체를 다시 읽어야 보입니다</span></div>
+      <div class="prob"><b>중복을 잡기 어렵다</b><span>능력단위마다 설명의 자세함이 제각각이라 겹치는 내용이 걸러지지 않습니다</span></div>
+    </div>
+    <div class="brokenflow">
+      <span class="bf">전문가의 경험</span>
+      <span style="font-size:20px;color:#bbb">→</span>
+      <span class="bf">지식·기술·태도 목록</span>
+      <span class="bf q">？ 근거로 되돌아갈 길이 끊겨 있습니다</span>
+    </div>
+  </section>
+
+  <!-- 2. 제안 -->
+  <section>
+    <div class="step">02 · 제안</div>
+    <h2>출처가 담긴 지식 그래프 위에서 만들어 냅니다</h2>
+    <p class="lead">원본 데이터를 점과 선으로 엮어, 출처를 따라갈 수 있는 그래프를 먼저 만듭니다. 그 위에서 지식·기술·태도를 끌어내면, 모든 항목에 "어디서 나왔는지"가 함께 따라붙습니다.</p>
+    <div class="p3">
+      <div class="blk" style="--c:var(--green)"><div class="t">① 원본 데이터</div><div class="s">능력단위·학습모듈·환경분석<br>O*NET · Work24 · 공공데이터</div></div>
+      <div class="ar">→</div>
+      <div class="blk" style="--c:var(--royal)"><div class="t">② 지식 그래프</div><div class="s">출처를 따라갈 수 있는 구조<br>점 = 개념·과업·도구·기준</div></div>
+      <div class="ar">→</div>
+      <div class="blk" style="--c:var(--sky)"><div class="t">③ 지식·기술·태도</div><div class="s">그래프에서 끌어내고<br>항목마다 출처를 연결</div></div>
+    </div>
+    <p class="body" style="margin-top:18px">그래프는 <b>"무엇이 사실인가"</b>를 맡습니다. 지식·기술·태도가 그 사실 위에 세워지니, 더는 추측이 아니라 근거를 따라갈 수 있는 결과가 됩니다.</p>
+  </section>
+
+  <!-- 3. 그래프 구조 예시 -->
+  <section>
+    <div class="step">03 · 구조 예시</div>
+    <h2>점과 선이 지식·기술·태도로 이어집니다</h2>
+    <p class="lead">어떤 점이 어떤 관계로 연결되느냐에 따라, 지식·기술·태도가 일정한 규칙으로 정해집니다. 아래가 그 연결 규칙의 예입니다.</p>
+    <div class="gx">
+      <div class="nodemap">
+        <div class="ndiagram">
+          <div class="nrow"><span class="nnode n-con">개념: 제어이론</span></div>
+          <div class="nrow"><span class="nedge">│ 이해-필요</span></div>
+          <div class="nrow"><span class="nnode n-task">과업: 제어로직 설계</span></div>
+          <div class="nrow"><span class="nedge">수행 ╱        ╲ 준수</span></div>
+          <div class="nrow">
+            <span class="nnode n-tool">도구: PLC·HMI</span>
+            <span class="nnode n-rule">기준: 안전·KS 규격</span>
+          </div>
+        </div>
+      </div>
+      <div>
+        <ul class="rulelist">
+          <li><span class="ksa k">지</span><span class="ed"><b>지식</b> — 과업에 필요한 개념<br><span style="color:#888">예: 제어이론을 알아야 제어로직을 설계할 수 있습니다</span></span></li>
+          <li><span class="ksa s">기</span><span class="ed"><b>기술</b> — 과업을 해내는 데 쓰는 도구·장비<br><span style="color:#888">예: PLC·HMI를 다뤄 로직을 구현합니다</span></span></li>
+          <li><span class="ksa a">태</span><span class="ed"><b>태도</b> — 과업에서 지켜야 할 규정·기준<br><span style="color:#888">예: 안전·KS 규격을 지키려는 자세입니다</span></span></li>
+        </ul>
+        <a class="linkbtn" href="preview.html"><span>실제 그래프 초안 열어 보기</span><span class="ar">↗</span></a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. 빈약한 곳 -->
+  <section>
+    <div class="step">04 · 핵심 ①</div>
+    <h2>데이터가 "어디가 약한지"를 스스로 알려 줍니다</h2>
+    <p class="lead">연결된 출처가 적은 항목은 곧 근거가 약하다는 신호입니다. 능력단위와 지식·기술·태도를 표로 펼쳐 근거의 충실도를 색으로 칠하면, 손봐야 할 곳이 한눈에 들어옵니다. 특히 <b>태도</b>는 기술 문서에 잘 드러나지 않아 대체로 약하게 나타나는데, 이런 점까지 데이터로 보인다는 것이 중요합니다.</p>
+    <div class="card hm">
+      <table class="heat">
+        <thead><tr><th></th><th>지식</th><th>기술</th><th>태도</th></tr></thead>
+        <tbody>
+          <tr><td class="rowh">제어로직 설계</td><td><div class="cell c5">충실</div></td><td><div class="cell c4">충실</div></td><td><div class="cell c2">빈약</div></td></tr>
+          <tr><td class="rowh">센서·계측 적용</td><td><div class="cell c4">충실</div></td><td><div class="cell c3">보통</div></td><td><div class="cell c1">매우 빈약</div></td></tr>
+          <tr><td class="rowh">제어시스템 통합</td><td><div class="cell c3">보통</div></td><td><div class="cell c4">충실</div></td><td><div class="cell c2">빈약</div></td></tr>
+        </tbody>
+      </table>
+      <div class="hmlegend">
+        <span><span class="sw" style="background:#237804"></span>근거 충실</span>
+        <span><span class="sw" style="background:#FAAD14"></span>보통</span>
+        <span><span class="sw" style="background:#FF4D4F"></span>빈약 — 사람이 손봐야 할 자리</span>
+        <span style="color:#999">※ 색이 진할수록 연결된 출처가 많습니다 (예시 값)</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. 사람의 개입 -->
+  <section>
+    <div class="step">05 · 핵심 ②</div>
+    <h2>각 단계마다, 사람이 들어가야 할 자리가 있습니다</h2>
+    <p class="lead">데이터가 약한 곳을 알려 주니, 사람이 모든 일을 다 할 필요는 없습니다. 우리 작업 흐름을 단계별로 따라가 보면, 시스템이 알아서 처리하는 부분과 사람이 꼭 판단해야 하는 부분이 또렷하게 갈립니다.</p>
+    <div class="stages">
+
+      <div class="stg" style="--c:var(--green)">
+        <div class="num">1</div>
+        <div class="bd">
+          <div class="sname">데이터 준비</div>
+          <div class="two">
+            <div class="sys"><div class="lbl">시스템</div><p>능력단위·O*NET·Work24 등 자료를 모아 정리</p></div>
+            <div class="hum"><div class="lbl">사람이 판단</div><p>어떤 자료를 쓸지, 그 출처를 믿을 수 있는지 확인</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stg keypt">
+        <div class="num">2</div>
+        <div class="bd">
+          <div class="sname">그래프의 뼈대 짜기 <span style="font-size:12px;font-weight:500;color:var(--royal)">· 첫 번째 합의 지점</span></div>
+          <div class="two">
+            <div class="sys"><div class="lbl">시스템</div><p>자료를 점과 선으로 연결</p></div>
+            <div class="hum"><div class="lbl">사람이 합의</div><p>무엇을 점으로 두고 어떤 관계로 이을지, 분류 기준 자체를 함께 정함</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stg" style="--c:var(--sky)">
+        <div class="num">3</div>
+        <div class="bd">
+          <div class="sname">지식·기술·태도 후보 뽑기</div>
+          <div class="two">
+            <div class="sys"><div class="lbl">시스템</div><p>그래프에서 후보를 출처와 함께 추출</p></div>
+            <div class="hum"><div class="lbl">사람이 보강</div><p>근거가 약한 항목, 특히 태도를 검토하고 다른 자료로 채움</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stg" style="--c:var(--sky)">
+        <div class="num">4</div>
+        <div class="bd">
+          <div class="sname">전문가 토론</div>
+          <div class="two">
+            <div class="sys"><div class="lbl">시스템</div><p>현장·학계 의견을 모아 정리</p></div>
+            <div class="hum"><div class="lbl">사람이 판단</div><p>후보 중 꼭 필요한 것을 고르고, 비중을 정함</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stg keypt">
+        <div class="num">5</div>
+        <div class="bd">
+          <div class="sname">합의 기준 적용 <span style="font-size:12px;font-weight:500;color:var(--royal)">· 두 번째 합의 지점</span></div>
+          <div class="two">
+            <div class="sys"><div class="lbl">시스템</div><p>정해진 점수로 합의·다수·재토론을 가름</p></div>
+            <div class="hum"><div class="lbl">사람이 합의</div><p>"6.0점이면 합의", "7 대 3 비중" 같은 기준이 타당한지 직접 정함 <span style="color:#946600">(지금은 임의로 둔 값)</span></p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stg" style="--c:var(--green)">
+        <div class="num">6</div>
+        <div class="bd">
+          <div class="sname">검증과 반영</div>
+          <div class="two">
+            <div class="sys"><div class="lbl">시스템</div><p>결과를 점검하고 다음 작업에 적용</p></div>
+            <div class="hum"><div class="lbl">사람이 확정</div><p>최종 결과를 확인하고, 합의한 기준을 다음 작업에 이어지게 함</p></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="keybox">
+      <div class="kk">가장 중요한 부분</div>
+      <div class="kt">결국 단계마다 사람의 합의가 필요하고, 그 합의를 다음 작업에 어떻게 다시 이어 가느냐가 이 설계의 핵심입니다.</div>
+      <div class="kd">특히 <b>2단계(분류 기준)</b>와 <b>5단계(합의 점수·비중)</b>는 사람이 반드시 짚어야 할 지점입니다. 데이터가 받쳐 주되, 중요한 갈림길에서는 사람이 판단한다 — 이 두 가지가 맞물려야 비로소 신뢰할 수 있는 결과가 됩니다.</div>
+    </div>
+  </section>
+
+  <!-- 6. 토론 하네스와 결합 -->
+  <section>
+    <div class="step">06 · 결합</div>
+    <h2>앞서 만든 토론 방식과 자연스럽게 이어집니다</h2>
+    <p class="lead">그래프는 토론을 대신하지 않습니다. 그래프가 근거 있는 <i>후보</i>를 내놓으면, 전문가 토론이 그중에서 고르고 다듬습니다. 토론에서 드는 근거가 이제 그래프의 실제 출처를 그대로 가리키게 됩니다.</p>
+    <div class="combine">
+      <div class="clayer evi">
+        <div class="ct">근거가 되는 층 — 지식 그래프</div>
+        <div class="cd">무엇이 사실인가. 출처와 함께 후보를 뽑아 올립니다.</div>
+      </div>
+      <div class="cmid">↓</div>
+      <div class="clayer jud">
+        <div class="ct">판단하는 층 — 전문가 토론과 합의</div>
+        <div class="cd">무엇이 중요한가. 그래프가 올린 후보를 사람이 세 가지로 정리합니다.</div>
+        <div class="judge3">
+          <div class="j3"><span class="j3n">①</span><div><b>고릅니다</b><span>후보 중 이 능력단위에 맞는 것만 남기고, 곁가지는 덜어 냅니다</span></div></div>
+          <div class="j3"><span class="j3n">②</span><div><b>비중을 정합니다</b><span>남긴 항목이 꼭 필요한지, 보조적인지 무게를 매깁니다</span></div></div>
+          <div class="j3"><span class="j3n">③</span><div><b>기준을 합의합니다</b><span>고르고 무게를 매기는 기준(6.0점·7 대 3 등)이 타당한지 함께 정하고 반영합니다</span></div></div>
+        </div>
+      </div>
+    </div>
+    <p class="body" style="margin-top:16px"><b>그래프는 무엇이 사실인지, 토론은 무엇이 중요한지를 맡습니다.</b> 확인 가능한 근거를 먼저 깔아 두기 때문에, AI가 없는 사실을 지어내는 일을 막을 수 있습니다.</p>
+  </section>
+
+  <!-- 7. 한계 -->
+  <section>
+    <div class="step">07 · 한계</div>
+    <h2>아직 풀어야 할 것들</h2>
+    <p class="lead">이 그림이 매끄럽게 돌아가려면, 솔직히 넘어야 할 벽이 몇 가지 있습니다.</p>
+    <div class="limits">
+      <div class="lim" style="border-left-color:var(--royal)"><b>그래프의 뼈대를 짜는 일</b><span>무엇을 점으로 두고(과업·개념·도구), 어떤 관계를 선으로 이을지(필요·수행·준수)부터 정해야 합니다. 이 분류가 엉성하면 지식·기술·태도를 끌어내는 규칙 자체가 작동하지 않습니다. <b style="color:var(--royal)">→ 이 첫 단계부터 전문가의 합의가 필요합니다.</b></span></div>
+      <div class="lim"><b>태도는 근거가 부족합니다</b><span>태도는 기술 문서에 거의 드러나지 않습니다. 안전·윤리·직업기초 같은 다른 자료를 반드시 함께 봐야 합니다.</span></div>
+      <div class="lim"><b>국내외 자료를 잇는 일</b><span>O*NET(해외·영어)과 Work24·NCS(국내·한국어)는 분류 방식도 언어도 다릅니다. 어느 쪽을 얼마나 따를지 정하기가 가장 까다롭습니다.</span></div>
+      <div class="lim"><b>데이터 자체의 한계</b><span>그래프의 신뢰도는 원본 데이터의 품질을 넘어설 수 없습니다. 결국 어떤 데이터를 바탕으로 삼느냐가 가장 중요합니다.</span></div>
+    </div>
+  </section>
+
+</div>
+
+<footer>
+  <div class="wrap">
+    <a class="navback" href="harness_map.html">← NCS 개선 하네스 구성도로 돌아가기</a>
+    &nbsp;·&nbsp; 데이터 기반 KSA 도출 개선 아이디어 · 노드 예시: <a class="navback" href="preview.html">preview.html</a> · NIA 디자인 톤
+  </div>
+</footer>
+
+</body>
+</html>
